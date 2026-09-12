@@ -1,1 +1,6 @@
-text
+backend run :
+.\venv\Scripts\activate
+uvicorn app.main:app --reload
+
+frontend run :
+npm run dev

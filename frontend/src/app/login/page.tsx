@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -14,6 +15,7 @@ import {
 
 export default function LoginPage() {
 
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   return (
     <main className="login-page">
@@ -60,7 +62,11 @@ export default function LoginPage() {
 
         <form
           className="login-card"
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={(e) => {
+            e.preventDefault();
+
+            router.push("/dashboard");
+          }}
         >
 
           <label>
