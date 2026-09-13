@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from app.routes.assistant import router as assistant_router
 from app.routes.expenses import router as expenses_router
+from app.routes import auth
 
 from app.database.connection import engine, Base
 from app import models
@@ -41,6 +42,11 @@ app.include_router(
 
 app.include_router(
     expenses_router,
+    prefix="/api"
+)
+
+app.include_router(
+    auth.router,
     prefix="/api"
 )
 

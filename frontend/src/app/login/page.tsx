@@ -16,7 +16,15 @@ import {
 export default function LoginPage() {
 
   const router = useRouter();
+
   const [showPassword, setShowPassword] = useState(false);
+
+  const [emailOrPhone, setEmailOrPhone] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   return (
     <main className="login-page">
 
@@ -62,10 +70,59 @@ export default function LoginPage() {
 
         <form
           className="login-card"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
 
-            router.push("/dashboard");
+            setError("");
+            setLoading(true);
+
+            try {
+              const response = await fetch(
+                "http://127.0.0.1:8000/api/auth/login",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    email_or_phone: emailOrPhone,
+                    password: password,
+                  }),
+                }
+              );
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(
+                  data.detail || "Login failed"
+                );
+              }
+
+              // Save JWT token
+              localStorage.setItem(
+                "access_token",
+                data.access_token
+              );
+
+              // Save user information
+              localStorage.setItem(
+                "user",
+                JSON.stringify(data.user)
+              );
+
+              // Go to dashboard
+              router.push("/dashboard");
+
+            } catch (error) {
+              setError(
+                error instanceof Error
+                  ? error.message
+                  : "Something went wrong"
+              );
+            } finally {
+              setLoading(false);
+            }
           }}
         >
 
@@ -80,6 +137,9 @@ export default function LoginPage() {
             <input
               type="text"
               placeholder="e.g. user@example.com"
+              value={emailOrPhone}
+              onChange={(e) => setEmailOrPhone(e.target.value)}
+              required
             />
 
           </div>
@@ -96,6 +156,9 @@ export default function LoginPage() {
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
             />
 
             <button
@@ -136,6 +199,11 @@ export default function LoginPage() {
 
           </div>
 
+          {error && (
+            <p className="login-error">
+              {error}
+            </p>
+          )}
 
           <button
             className="login-submit"

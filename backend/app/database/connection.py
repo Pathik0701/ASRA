@@ -26,7 +26,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 # ---------------------------------------------------------
 
 DATABASE_URL = URL.create(
-    drivername="mysql+pymysql",
+    drivername="postgresql+psycopg",
     username=DB_USER,
     password=DB_PASSWORD,
     host=DB_HOST,

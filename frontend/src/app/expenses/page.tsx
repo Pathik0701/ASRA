@@ -21,304 +21,303 @@ import {
   X,
 } from "lucide-react";
 
-
-// =========================================================
-// TYPES
-// =========================================================
-
 type Expense = {
   id: number;
-  user_id: number;
+  user_id?: number;
   title: string;
   category: string;
   amount: number;
-  note?: string | null;
+  note?: string;
+  date: string;
   expense_date?: string;
   created_at?: string;
 };
 
-
-// =========================================================
-// API
-// =========================================================
-
-// Temporary development user.
-// Later JWT authentication will provide this automatically.
-const USER_ID = 1;
-
-const API_URL = "http://localhost:8000/api";
-
-
-// =========================================================
-// PAGE
-// =========================================================
-
 export default function ExpensesPage() {
+  /* =========================================================
+     STATE
+     ========================================================= */
 
   const [showForm, setShowForm] = useState(false);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState("");
 
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Food");
   const [note, setNote] = useState("");
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  /* =========================================================
+     USER ID
+     ========================================================= */
 
-  const [error, setError] = useState("");
+  const userId = 1;
 
-
-  // =======================================================
-  // LOAD EXPENSES FROM BACKEND
-  // =======================================================
-
-  async function loadExpenses() {
-
-    try {
-
-      setLoading(true);
-      setError("");
-
-      const response = await fetch(
-        `${API_URL}/expenses?user_id=${USER_ID}`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to load expenses");
-      }
-
-      const data = await response.json();
-
-      setExpenses(data.expenses || []);
-
-    } catch (error) {
-
-      console.error("Error loading expenses:", error);
-
-      setError(
-        "Unable to load expenses. Please check whether the backend is running."
-      );
-
-    } finally {
-
-      setLoading(false);
-
-    }
-  }
-
-
-  // =======================================================
-  // LOAD WHEN PAGE OPENS
-  // =======================================================
+  /* =========================================================
+     GET EXPENSES FROM FASTAPI + POSTGRESQL
+     ========================================================= */
 
   useEffect(() => {
+    async function loadExpenses() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch(
+          `http://127.0.0.1:8000/api/expenses?user_id=${userId}`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load expenses. Status: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+
+        console.log("GET expenses response:", data);
+
+        /*
+          Depending on your FastAPI response,
+          the expenses may be directly returned as an array
+          or inside a property.
+        */
+
+        const expenseList = Array.isArray(data)
+          ? data
+          : data.expenses || data.data || [];
+
+        const formattedExpenses: Expense[] = expenseList.map(
+          (expense: any) => ({
+            id: expense.id,
+            user_id: expense.user_id,
+            title: expense.title,
+            category: expense.category,
+            amount: Number(expense.amount),
+            note: expense.note,
+
+            date: expense.expense_date
+              ? new Date(expense.expense_date).toLocaleDateString(
+                  "en-IN",
+                  {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  }
+                )
+              : expense.created_at
+              ? new Date(expense.created_at).toLocaleDateString(
+                  "en-IN",
+                  {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  }
+                )
+              : "N/A",
+
+            expense_date: expense.expense_date,
+            created_at: expense.created_at,
+          })
+        );
+
+        setExpenses(formattedExpenses);
+      } catch (err) {
+        console.error("Error loading expenses:", err);
+
+        setError(
+          "Unable to load expenses. Please make sure the backend is running."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
 
     loadExpenses();
-
   }, []);
 
-
-  // =======================================================
-  // TOTAL EXPENSE
-  // =======================================================
+  /* =========================================================
+     CALCULATIONS
+     ========================================================= */
 
   const totalExpense = expenses.reduce(
-    (total, expense) => total + Number(expense.amount),
+    (total, expense) => total + expense.amount,
     0
   );
-
-
-  // =======================================================
-  // MONTHLY BUDGET
-  // =======================================================
 
   const monthlyBudget = 8000;
 
   const remaining = monthlyBudget - totalExpense;
 
+  const budgetPercentage = Math.min(
+    (totalExpense / monthlyBudget) * 100,
+    100
+  );
 
-  // =======================================================
-  // FORMAT DATE
-  // =======================================================
+  /* =========================================================
+     ADD EXPENSE
+     ========================================================= */
 
-  function formatDate(date?: string) {
-
-    if (!date) {
-      return "Today";
-    }
-
-    const parsedDate = new Date(date);
-
-    if (isNaN(parsedDate.getTime())) {
-      return date;
-    }
-
-    return parsedDate.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-
-  // =======================================================
-  // ADD EXPENSE
-  // =======================================================
-
-  async function addExpense(e: React.FormEvent) {
-
+  async function addExpense(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!title.trim() || !amount) {
-      return;
-    }
-
-    const numericAmount = Number(amount);
-
-    if (numericAmount <= 0) {
+    if (!title.trim() || !amount.trim()) {
       return;
     }
 
     try {
-
-      setSaving(true);
-      setError("");
-
       const response = await fetch(
-        `${API_URL}/expenses`,
+        "http://127.0.0.1:8000/api/expenses",
         {
           method: "POST",
 
           headers: {
+            Accept: "application/json",
             "Content-Type": "application/json",
           },
 
           body: JSON.stringify({
-            user_id: USER_ID,
+            user_id: userId,
             title: title.trim(),
-            category: category,
-            amount: numericAmount,
-            note: note.trim() || null,
+            category,
+            amount: Number(amount),
+            note: note.trim(),
           }),
         }
       );
 
-
       if (!response.ok) {
-
-        const errorData = await response.text();
-
-        console.error(
-          "Backend error:",
-          errorData
-        );
-
         throw new Error(
-          "Failed to add expense"
+          `Failed to add expense. Status: ${response.status}`
         );
       }
 
-
       const data = await response.json();
 
+      console.log("POST expense response:", data);
 
-      // Add the expense returned by backend
-      setExpenses((previous) => [
-        data.expense,
-        ...previous,
-      ]);
+      /*
+        Your backend returns:
 
+        {
+          success: true,
+          message: "Expense added successfully",
+          expense: {...}
+        }
+      */
 
-      // Clear form
+      if (data.expense) {
+        const newExpense = data.expense;
+
+        const formattedExpense: Expense = {
+          id: newExpense.id,
+          user_id: newExpense.user_id,
+          title: newExpense.title,
+          category: newExpense.category,
+          amount: Number(newExpense.amount),
+          note: newExpense.note,
+
+          date: newExpense.expense_date
+            ? new Date(
+                newExpense.expense_date
+              ).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "Today",
+
+          expense_date: newExpense.expense_date,
+          created_at: newExpense.created_at,
+        };
+
+        setExpenses((previous) => [
+          formattedExpense,
+          ...previous,
+        ]);
+      }
+
+      /* Reset form */
+
       setTitle("");
       setAmount("");
       setCategory("Food");
       setNote("");
 
       setShowForm(false);
+    } catch (err) {
+      console.error("Error adding expense:", err);
 
-
-    } catch (error) {
-
-      console.error(
-        "Error adding expense:",
-        error
+      alert(
+        "Unable to add expense. Please check whether the backend is running."
       );
-
-      setError(
-        "Unable to save expense. Please check the backend."
-      );
-
-    } finally {
-
-      setSaving(false);
-
     }
   }
 
-
-  // =======================================================
-  // DELETE EXPENSE
-  // =======================================================
+  /* =========================================================
+     DELETE EXPENSE
+     
+     For now this removes it from the UI.
+     We will connect DELETE to PostgreSQL in the next step.
+     ========================================================= */
 
   async function deleteExpense(id: number) {
-
     try {
-
-      setError("");
-
-      const response = await fetch(
-        `${API_URL}/expenses/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          "Failed to delete expense"
+        const response = await fetch(
+            `http://127.0.0.1:8000/api/expenses/${id}`,
+            {
+                method: "DELETE",
+                headers: {
+                    Accept: "application/json",
+                },
+            }
         );
-      }
 
+        if (!response.ok) {
+            throw new Error(
+                `Failed to delete expense. Status: ${response.status}`
+            );
+        }
 
-      // Remove from UI after successful deletion
-      setExpenses((previous) =>
-        previous.filter(
-          (expense) => expense.id !== id
-        )
-      );
+        const data = await response.json();
 
+        console.log("DELETE expense response:", data);
+
+        // Only remove it from the UI after
+        // PostgreSQL confirms successful deletion.
+        setExpenses((previous) =>
+            previous.filter((expense) => expense.id !== id)
+        );
 
     } catch (error) {
+        console.error("Error deleting expense:", error);
 
-      console.error(
-        "Error deleting expense:",
-        error
-      );
-
-      setError(
-        "Unable to delete expense."
-      );
-
+        alert(
+            "Unable to delete expense. Please try again."
+        );
     }
   }
 
-
-  // =======================================================
-  // PAGE
-  // =======================================================
+  /* =========================================================
+     UI
+     ========================================================= */
 
   return (
-
     <main className="expenses-page">
 
-      {/* =================================================
+      {/* =====================================================
           SIDEBAR
-      ================================================= */}
+          ===================================================== */}
 
       <aside className="expenses-sidebar">
 
@@ -330,9 +329,7 @@ export default function ExpensesPage() {
 
           <div>
             <strong>ASRA</strong>
-            <small>
-              Support · Guide · Empower
-            </small>
+            <small>Support · Guide · Empower</small>
           </div>
 
         </div>
@@ -394,16 +391,13 @@ export default function ExpensesPage() {
       </aside>
 
 
-      {/* =================================================
-          MAIN
-      ================================================= */}
+      {/* =====================================================
+          MAIN CONTENT
+          ===================================================== */}
 
       <section className="expenses-main">
 
-
-        {/* =================================================
-            HEADER
-        ================================================= */}
+        {/* HEADER */}
 
         <header className="expenses-header">
 
@@ -417,11 +411,9 @@ export default function ExpensesPage() {
               Back to Dashboard
             </Link>
 
-
             <h1>
               My Expenses
             </h1>
-
 
             <p>
               Keep track of your household spending in one place.
@@ -430,40 +422,36 @@ export default function ExpensesPage() {
           </div>
 
 
-          <button
-            className="expenses-notification"
-          >
+          <button className="expenses-notification">
             <Bell size={19} />
           </button>
 
         </header>
 
 
-        {/* =================================================
+        {/* ===================================================
             ERROR MESSAGE
-        ================================================= */}
+            =================================================== */}
 
         {error && (
-
           <div
             style={{
               padding: "12px 16px",
               marginBottom: "20px",
               borderRadius: "10px",
-              background: "#fff1f1",
-              color: "#a33",
-              border: "1px solid #f0caca",
+              background: "#fff1f0",
+              color: "#b42318",
+              border: "1px solid #f5c2c0",
             }}
           >
             {error}
           </div>
-
         )}
 
 
-        {/* =================================================
+        {/* ===================================================
             SUMMARY
-        ================================================= */}
+            =================================================== */}
 
         <section className="expense-summary">
 
@@ -474,9 +462,7 @@ export default function ExpensesPage() {
             </div>
 
             <div>
-              <span>
-                Monthly Budget
-              </span>
+              <span>Monthly Budget</span>
 
               <strong>
                 ₹{monthlyBudget.toLocaleString("en-IN")}
@@ -493,9 +479,7 @@ export default function ExpensesPage() {
             </div>
 
             <div>
-              <span>
-                Total Spent
-              </span>
+              <span>Total Spent</span>
 
               <strong>
                 ₹{totalExpense.toLocaleString("en-IN")}
@@ -512,15 +496,10 @@ export default function ExpensesPage() {
             </div>
 
             <div>
-              <span>
-                Remaining
-              </span>
+              <span>Remaining</span>
 
               <strong>
-                ₹{Math.max(
-                  remaining,
-                  0
-                ).toLocaleString("en-IN")}
+                ₹{Math.max(remaining, 0).toLocaleString("en-IN")}
               </strong>
             </div>
 
@@ -529,9 +508,9 @@ export default function ExpensesPage() {
         </section>
 
 
-        {/* =================================================
-            PROGRESS
-        ================================================= */}
+        {/* ===================================================
+            BUDGET
+            =================================================== */}
 
         <section className="budget-card">
 
@@ -546,21 +525,14 @@ export default function ExpensesPage() {
               <p>
                 You have spent ₹
                 {totalExpense.toLocaleString("en-IN")}
-                {" "}of ₹
-                {monthlyBudget.toLocaleString("en-IN")}
+                {" "}of{" "}
+                ₹{monthlyBudget.toLocaleString("en-IN")}
               </p>
 
             </div>
 
-
             <strong>
-
-              {Math.round(
-                (totalExpense / monthlyBudget) * 100
-              )}
-
-              %
-
+              {Math.round(budgetPercentage)}%
             </strong>
 
           </div>
@@ -571,10 +543,7 @@ export default function ExpensesPage() {
             <div
               className="budget-progress-fill"
               style={{
-                width: `${Math.min(
-                  (totalExpense / monthlyBudget) * 100,
-                  100
-                )}%`,
+                width: `${budgetPercentage}%`,
               }}
             />
 
@@ -583,9 +552,9 @@ export default function ExpensesPage() {
         </section>
 
 
-        {/* =================================================
+        {/* ===================================================
             EXPENSE LIST
-        ================================================= */}
+            =================================================== */}
 
         <section className="expense-list-section">
 
@@ -606,179 +575,144 @@ export default function ExpensesPage() {
 
             <button
               className="add-expense-button"
-              onClick={() =>
-                setShowForm(true)
-              }
+              onClick={() => setShowForm(true)}
             >
-
               <Plus size={17} />
-
               Add Expense
-
             </button>
 
           </div>
 
 
-          <div className="expense-list">
+          {/* LOADING */}
+
+          {loading && (
+            <div
+              style={{
+                padding: "40px",
+                textAlign: "center",
+              }}
+            >
+              Loading your expenses...
+            </div>
+          )}
 
 
-            {/* LOADING */}
+          {/* EMPTY */}
 
-            {loading && (
+          {!loading && expenses.length === 0 && !error && (
+            <div
+              style={{
+                padding: "40px",
+                textAlign: "center",
+              }}
+            >
+              <p>No expenses added yet.</p>
 
-              <div
-                style={{
-                  padding: "30px",
-                  textAlign: "center",
-                }}
-              >
-                Loading expenses...
-              </div>
-
-            )}
+              <p>
+                Click <strong>Add Expense</strong> to add your
+                first household expense.
+              </p>
+            </div>
+          )}
 
 
-            {/* EMPTY */}
+          {/* EXPENSES */}
 
-            {!loading &&
-              expenses.length === 0 && (
+          {!loading && expenses.length > 0 && (
+            <div className="expense-list">
+
+              {expenses.map((expense) => (
 
                 <div
-                  style={{
-                    padding: "40px",
-                    textAlign: "center",
-                  }}
+                  className="expense-row"
+                  key={expense.id}
                 >
 
-                  <Wallet
-                    size={35}
-                    style={{
-                      marginBottom: "10px",
-                    }}
-                  />
+                  <div className="expense-category-icon">
 
-                  <p>
-                    No expenses yet.
-                  </p>
+                    {expense.category === "Food" && (
+                      <Utensils size={19} />
+                    )}
 
-                  <small>
-                    Add your first household expense.
-                  </small>
+                    {expense.category === "Education" && (
+                      <GraduationCap size={19} />
+                    )}
 
-                </div>
+                    {expense.category === "Health" && (
+                      <HeartPulse size={19} />
+                    )}
 
-              )}
+                    {expense.category === "Travel" && (
+                      <Bus size={19} />
+                    )}
 
-
-            {/* EXPENSES */}
-
-            {!loading &&
-              expenses.map(
-                (expense) => (
-
-                  <div
-                    className="expense-row"
-                    key={expense.id}
-                  >
-
-
-                    <div className="expense-category-icon">
-
-                      {expense.category === "Food" && (
-                        <Utensils size={19} />
-                      )}
-
-                      {expense.category === "Education" && (
-                        <GraduationCap size={19} />
-                      )}
-
-                      {expense.category === "Health" && (
-                        <HeartPulse size={19} />
-                      )}
-
-                      {expense.category === "Travel" && (
-                        <Bus size={19} />
-                      )}
-
-                      {expense.category === "Other" && (
-                        <MoreHorizontal size={19} />
-                      )}
-
-                    </div>
-
-
-                    <div className="expense-details">
-
-                      <strong>
-                        {expense.title}
-                      </strong>
-
-                      <span>
-                        {expense.category}
-                      </span>
-
-                    </div>
-
-
-                    <div className="expense-date">
-
-                      <CalendarDays size={14} />
-
-                      {formatDate(
-                        expense.expense_date ||
-                        expense.created_at
-                      )}
-
-                    </div>
-
-
-                    <strong className="expense-amount">
-
-                      ₹{Number(
-                        expense.amount
-                      ).toLocaleString("en-IN")}
-
-                    </strong>
-
-
-                    <button
-                      className="delete-expense"
-
-                      onClick={() =>
-                        deleteExpense(
-                          expense.id
-                        )
-                      }
-
-                    >
-
-                      <Trash2 size={16} />
-
-                    </button>
+                    {expense.category === "Other" && (
+                      <MoreHorizontal size={19} />
+                    )}
 
                   </div>
 
-                )
-              )}
 
-          </div>
+                  <div className="expense-details">
+
+                    <strong>
+                      {expense.title}
+                    </strong>
+
+                    <span>
+                      {expense.category}
+                    </span>
+
+                  </div>
+
+
+                  <div className="expense-date">
+
+                    <CalendarDays size={14} />
+
+                    {expense.date}
+
+                  </div>
+
+
+                  <strong className="expense-amount">
+
+                    ₹{expense.amount.toLocaleString("en-IN")}
+
+                  </strong>
+
+
+                  <button
+                    className="delete-expense"
+                    onClick={() =>
+                      deleteExpense(expense.id)
+                    }
+                  >
+                    <Trash2 size={16} />
+                  </button>
+
+                </div>
+
+              ))}
+
+            </div>
+          )}
 
         </section>
 
       </section>
 
 
-      {/* =================================================
+      {/* =====================================================
           ADD EXPENSE MODAL
-      ================================================= */}
+          ===================================================== */}
 
       {showForm && (
 
         <div className="expense-modal-overlay">
 
           <div className="expense-modal">
-
 
             <div className="expense-modal-header">
 
@@ -796,14 +730,10 @@ export default function ExpensesPage() {
 
 
               <button
-                onClick={() =>
-                  setShowForm(false)
-                }
+                onClick={() => setShowForm(false)}
                 className="close-modal"
               >
-
                 <X size={20} />
-
               </button>
 
             </div>
@@ -814,7 +744,6 @@ export default function ExpensesPage() {
               onSubmit={addExpense}
             >
 
-
               {/* EXPENSE NAME */}
 
               <label>
@@ -824,16 +753,10 @@ export default function ExpensesPage() {
                 <input
                   type="text"
                   placeholder="e.g. Grocery shopping"
-
                   value={title}
-
                   onChange={(e) =>
-                    setTitle(
-                      e.target.value
-                    )
+                    setTitle(e.target.value)
                   }
-
-                  required
                 />
 
               </label>
@@ -851,20 +774,12 @@ export default function ExpensesPage() {
 
                   <input
                     type="number"
+                    min="0"
                     placeholder="Enter amount"
-
                     value={amount}
-
                     onChange={(e) =>
-                      setAmount(
-                        e.target.value
-                      )
+                      setAmount(e.target.value)
                     }
-
-                    min="1"
-                    step="0.01"
-
-                    required
                   />
 
                 </div>
@@ -882,11 +797,8 @@ export default function ExpensesPage() {
 
                   <select
                     value={category}
-
                     onChange={(e) =>
-                      setCategory(
-                        e.target.value
-                      )
+                      setCategory(e.target.value)
                     }
                   >
 
@@ -927,14 +839,10 @@ export default function ExpensesPage() {
 
                 <input
                   type="text"
-                  placeholder="Optional note"
-
+                  placeholder="e.g. Weekly vegetables"
                   value={note}
-
                   onChange={(e) =>
-                    setNote(
-                      e.target.value
-                    )
+                    setNote(e.target.value)
                   }
                 />
 
@@ -948,11 +856,9 @@ export default function ExpensesPage() {
                 <button
                   type="button"
                   className="cancel-expense"
-
                   onClick={() =>
                     setShowForm(false)
                   }
-
                 >
                   Cancel
                 </button>
@@ -961,15 +867,8 @@ export default function ExpensesPage() {
                 <button
                   type="submit"
                   className="save-expense"
-
-                  disabled={saving}
-
                 >
-
-                  {saving
-                    ? "Saving..."
-                    : "Save Expense"}
-
+                  Save Expense
                 </button>
 
               </div>
