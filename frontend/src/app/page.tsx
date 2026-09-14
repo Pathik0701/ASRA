@@ -202,28 +202,40 @@ export default function HomePage() {
 
       {/* ================= FEATURES ================= */}
 
-      <section id="features" className="feature-strip">
+	<section id="features" className="feature-strip">
 
-        {features.map(
-          ({ icon: Icon, title, text, className }) => (
+  {features.map(
+    ({ icon: Icon, title, text, className }) => {
 
-            <div className="feature" key={title}>
+      const routes: Record<string, string> = {
+        "Home Management": "/dashboard",
+        "Expense Tracking": "/expenses",
+        "Government Schemes": "/schemes",
+        "Voice Assistant": "/assistant",
+        "Reminders & Alerts": "/reminders",
+      };
 
-              <div className={`feature-icon ${className}`}>
-                <Icon size={25} strokeWidth={2} />
-              </div>
+      return (
+        <Link
+          href={routes[title]}
+          className="feature"
+          key={title}
+        >
 
-              <h3>{title}</h3>
+          <div className={`feature-icon ${className}`}>
+            <Icon size={25} strokeWidth={2} />
+          </div>
 
-              <p>{text}</p>
+          <h3>{title}</h3>
 
-            </div>
+          <p>{text}</p>
 
-          )
-        )}
+        </Link>
+      );
+    }
+  )}
 
-      </section>
-
+	</section>
 
       {/* ================= IMPACT ================= */}
 

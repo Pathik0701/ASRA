@@ -107,11 +107,13 @@ export default function DashboardPage() {
             <span>ASRA Assistant</span>
           </Link>
 
-          <button className="dashboard-nav-item">
-            <Bell size={19} />
-            <span>Reminders</span>
-          </button>
-
+	<Link
+	href="/reminders"
+	className="dashboard-nav-item"
+	>
+	<Bell size={19} />
+	<span>Reminders</span>
+	</Link>
         </nav>
 
 
@@ -125,11 +127,10 @@ export default function DashboardPage() {
             <span>My Profile</span>
           </Link>
 
-          <button className="dashboard-nav-item">
-            <Settings size={19} />
-            <span>Settings</span>
-          </button>
-
+	<Link href="/settings" className="dashboard-nav-item">
+	  <Settings size={19} />
+	  <span>Settings</span>
+	</Link>
         </div>
 
       </aside>
@@ -160,11 +161,14 @@ export default function DashboardPage() {
 
           <div className="dashboard-user-area">
 
-            <button className="notification-button">
-              <Bell size={20} />
-              <span className="notification-dot"></span>
-            </button>
-
+	    <button
+  type="button"
+  className="notification-button"
+  onClick={() => alert("You have 3 pending reminders.")}
+>
+  <Bell size={20} />
+  <span className="notification-dot"></span>
+</button>
             <div className="dashboard-user">
 
               <div className="dashboard-user-avatar">
@@ -295,23 +299,20 @@ export default function DashboardPage() {
             </Link>
 
 
-            <div className="quick-help-card">
+	   <Link href="/assistant" className="quick-help-card">
+  <div className="quick-help-icon">
+    <Landmark size={24} />
+  </div>
 
-              <div className="quick-help-icon">
-                <Landmark size={24} />
-              </div>
+  <div>
+    <h3>Banking Help</h3>
+    <p>
+      Get simple guidance for common bank tasks.
+    </p>
+  </div>
 
-              <div>
-                <h3>Banking Help</h3>
-                <p>
-                  Get simple guidance for common bank tasks.
-                </p>
-              </div>
-
-              <ChevronRight size={19} />
-
-            </div>
-
+  <ChevronRight size={19} />
+</Link>
           </div>
 
         </section>
