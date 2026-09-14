@@ -280,15 +280,13 @@ export default function SchemesPage() {
 
         <div className="schemes-sidebar-bottom">
 
-          <button className="schemes-nav-item">
-            <Bell size={19} />
-            Reminders
-          </button>
-
-          <button className="schemes-nav-item">
-            Settings
-          </button>
-
+	<Link href="/reminders" className="schemes-nav-item">
+	<Bell size={19} />
+	  Reminders
+	</Link>
+	<Link href="/settings" className="schemes-nav-item">
+  Settings
+	</Link>
         </div>
 
       </aside>
@@ -322,10 +320,13 @@ export default function SchemesPage() {
           </div>
 
 
-          <button className="schemes-notification">
-            <Bell size={19} />
-          </button>
-
+	<button
+  type="button"
+  className="schemes-notification"
+  onClick={() => alert("You have 3 pending reminders.")}
+>
+  <Bell size={19} />
+</button>
         </header>
 
 

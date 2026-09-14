@@ -71,7 +71,7 @@ export default function AssistantPage() {
     if (!messageText) return;
 
     const userMessage: Message = {
-      id: Date.now(),
+	id: messages.length + 1,
       type: "user",
       text: messageText,
     };
@@ -106,7 +106,7 @@ export default function AssistantPage() {
       const data = await response.json();
 
       const assistantMessage: Message = {
-        id: Date.now() + 1,
+	id: messages.length + 2,
         type: "assistant",
         text: data.answer,
       };
@@ -121,7 +121,7 @@ export default function AssistantPage() {
       console.error(error);
 
       const errorMessage: Message = {
-        id: Date.now() + 1,
+	id: messages.length + 2,
         type: "assistant",
         text:
           "Sorry, I couldn't connect to ASRA right now. Please make sure the ASRA backend is running.",
@@ -196,15 +196,13 @@ export default function AssistantPage() {
 
         <div className="assistant-sidebar-bottom">
 
-          <button className="assistant-nav-item">
-            <Bell size={19} />
-            Reminders
-          </button>
-
-          <button className="assistant-nav-item">
-            Settings
-          </button>
-
+	   <Link href="/reminders" className="assistant-nav-item">
+  <Bell size={19} />
+  Reminders
+</Link>
+<Link href="/settings" className="assistant-nav-item">
+  Settings
+</Link>
         </div>
 
       </aside>
@@ -239,10 +237,13 @@ export default function AssistantPage() {
           </div>
 
 
-          <button className="assistant-notification">
-            <Bell size={19} />
-          </button>
-
+	<button
+  type="button"
+  className="assistant-notification"
+  onClick={() => alert("You have 3 pending reminders.")}
+>
+  <Bell size={19} />
+</button>
         </header>
 
 

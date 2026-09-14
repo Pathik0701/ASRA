@@ -98,7 +98,16 @@ export default function ExpensesPage() {
           : data.expenses || data.data || [];
 
         const formattedExpenses: Expense[] = expenseList.map(
-          (expense: any) => ({
+	    (expense: {
+  id: number;
+  user_id?: number;
+  title: string;
+  category: string;
+  amount: number;
+  note?: string;
+  expense_date?: string;
+  created_at?: string;
+}) => ({
             id: expense.id,
             user_id: expense.user_id,
             title: expense.title,
@@ -266,7 +275,7 @@ export default function ExpensesPage() {
 
   /* =========================================================
      DELETE EXPENSE
-     
+
      For now this removes it from the UI.
      We will connect DELETE to PostgreSQL in the next step.
      ========================================================= */
@@ -377,15 +386,14 @@ export default function ExpensesPage() {
 
         <div className="expenses-sidebar-bottom">
 
-          <button className="expenses-nav-item">
-            <Bell size={19} />
-            Reminders
-          </button>
+	  <Link href="/reminders" className="expenses-nav-item">
+	<Bell size={19} />
+	Reminders
+	</Link>
 
-          <button className="expenses-nav-item">
-            Settings
-          </button>
-
+	<Link href="/settings" className="expenses-nav-item">
+	  Settings
+	</Link>
         </div>
 
       </aside>
@@ -422,10 +430,13 @@ export default function ExpensesPage() {
           </div>
 
 
-          <button className="expenses-notification">
-            <Bell size={19} />
-          </button>
-
+	<button
+  type="button"
+  className="expenses-notification"
+  onClick={() => alert("You have 3 pending reminders.")}
+>
+  <Bell size={19} />
+</button>
         </header>
 
 
