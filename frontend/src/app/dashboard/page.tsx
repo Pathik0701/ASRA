@@ -1,6 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getUser, isLoggedIn } from "@/lib/auth";
+
+
 import {
   Bell,
   Bot,
@@ -15,12 +20,43 @@ import {
   Landmark,
   MessageCircle,
   X,
+  LogOut,
 } from "lucide-react";
 
-import { useState } from "react";
+
 
 export default function DashboardPage() {
+
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user");
+
+    router.replace("/login");
+  };
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [user, setUser] = useState<{
+    name?: string;
+    email?: string;
+    phone?: string;
+    preferred_language?: string;
+  } | null>(null);
+
+  useEffect(() => {
+
+  if (!isLoggedIn()) {
+      router.replace("/login");
+      return;
+    }
+
+    const loggedInUser = getUser();
+
+    setUser(loggedInUser);
+
+  }, [router]);
 
   return (
     <main className="dashboard-page">
@@ -127,10 +163,19 @@ export default function DashboardPage() {
             <span>My Profile</span>
           </Link>
 
-	<Link href="/settings" className="dashboard-nav-item">
-	  <Settings size={19} />
-	  <span>Settings</span>
-	</Link>
+          <Link href="/settings" className="dashboard-nav-item">
+            <Settings size={19} />
+            <span>Settings</span>
+          </Link>
+
+          <button
+            type="button"
+            className="dashboard-nav-item"
+            onClick={handleLogout}
+          >
+            <LogOut size={19} />
+            <span>Logout</span>
+          </button>
         </div>
 
       </aside>
@@ -150,7 +195,7 @@ export default function DashboardPage() {
             </span>
 
             <h1>
-              Namaste! <span>👋</span>
+              Namaste{user?.name ? `, ${user.name}` : ""}! <span>👋</span>
             </h1>
 
             <p>
@@ -176,8 +221,15 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <strong>My Account</strong>
-                <small>Family Support</small>
+                <strong>
+                  {user?.name || "My Account"}
+                </strong>
+
+                <small>
+                  {user?.preferred_language === "hi"
+                    ? "Hindi Support"
+                    : "Family Support"}
+                </small>
               </div>
 
             </div>

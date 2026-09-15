@@ -13,6 +13,8 @@ import {
   UserRound,
 } from "lucide-react";
 
+const API_URL = "http://127.0.0.1:8000";
+
 export default function LoginPage() {
 
   const router = useRouter();
@@ -78,14 +80,17 @@ export default function LoginPage() {
 
             try {
               const response = await fetch(
-                "http://127.0.0.1:8000/api/auth/login",
+                `${API_URL}/api/auth/login`,
                 {
                   method: "POST",
+
                   headers: {
                     "Content-Type": "application/json",
+                    Accept: "application/json",
                   },
+
                   body: JSON.stringify({
-                    email_or_phone: emailOrPhone,
+                    email_or_phone: emailOrPhone.trim(),
                     password: password,
                   }),
                 }
@@ -208,12 +213,11 @@ export default function LoginPage() {
           <button
             className="login-submit"
             type="submit"
+            disabled={loading}
           >
+            {loading ? "Logging in..." : "Login"}
 
-            Login
-
-            <ArrowRight size={17} />
-
+            {!loading && <ArrowRight size={17} />}
           </button>
 
 

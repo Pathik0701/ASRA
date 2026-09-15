@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getUser, isLoggedIn } from "@/lib/auth";
 
 import {
   ArrowLeft,
@@ -33,10 +35,28 @@ type Expense = {
   created_at?: string;
 };
 
+const API_URL = "http://127.0.0.1:8000";
+
+function getToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return localStorage.getItem("access_token");
+}
+
 export default function ExpensesPage() {
   /* =========================================================
      STATE
      ========================================================= */
+
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      router.replace("/login");
+    }
+  }, [router]);
 
   const [showForm, setShowForm] = useState(false);
 
@@ -52,108 +72,114 @@ export default function ExpensesPage() {
   const [note, setNote] = useState("");
 
   /* =========================================================
-     USER ID
-     ========================================================= */
-
-  const userId = 1;
-
-  /* =========================================================
      GET EXPENSES FROM FASTAPI + POSTGRESQL
      ========================================================= */
 
   useEffect(() => {
-    async function loadExpenses() {
-      try {
-        setLoading(true);
-        setError("");
+  async function loadExpenses() {
+    try {
+      setLoading(true);
+      setError("");
 
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/expenses?user_id=${userId}`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-          }
-        );
+      const token = getToken();
 
-        if (!response.ok) {
-          throw new Error(
-            `Failed to load expenses. Status: ${response.status}`
-          );
-        }
-
-        const data = await response.json();
-
-        console.log("GET expenses response:", data);
-
-        /*
-          Depending on your FastAPI response,
-          the expenses may be directly returned as an array
-          or inside a property.
-        */
-
-        const expenseList = Array.isArray(data)
-          ? data
-          : data.expenses || data.data || [];
-
-        const formattedExpenses: Expense[] = expenseList.map(
-	    (expense: {
-  id: number;
-  user_id?: number;
-  title: string;
-  category: string;
-  amount: number;
-  note?: string;
-  expense_date?: string;
-  created_at?: string;
-}) => ({
-            id: expense.id,
-            user_id: expense.user_id,
-            title: expense.title,
-            category: expense.category,
-            amount: Number(expense.amount),
-            note: expense.note,
-
-            date: expense.expense_date
-              ? new Date(expense.expense_date).toLocaleDateString(
-                  "en-IN",
-                  {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }
-                )
-              : expense.created_at
-              ? new Date(expense.created_at).toLocaleDateString(
-                  "en-IN",
-                  {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }
-                )
-              : "N/A",
-
-            expense_date: expense.expense_date,
-            created_at: expense.created_at,
-          })
-        );
-
-        setExpenses(formattedExpenses);
-      } catch (err) {
-        console.error("Error loading expenses:", err);
-
-        setError(
-          "Unable to load expenses. Please make sure the backend is running."
-        );
-      } finally {
-        setLoading(false);
+      if (!token) {
+        router.replace("/login");
+        return;
       }
-    }
 
-    loadExpenses();
-  }, []);
+      const response = await fetch(
+        `${API_URL}/api/expenses`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+
+        router.replace("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load expenses. Status: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+
+      console.log("GET expenses response:", data);
+
+      const expenseList = Array.isArray(data)
+        ? data
+        : data.expenses || data.data || [];
+
+      const formattedExpenses: Expense[] = expenseList.map(
+        (expense: {
+          id: number;
+          user_id?: number;
+          title: string;
+          category: string;
+          amount: number;
+          note?: string;
+          expense_date?: string;
+          created_at?: string;
+        }) => ({
+          id: expense.id,
+          user_id: expense.user_id,
+          title: expense.title,
+          category: expense.category,
+          amount: Number(expense.amount),
+          note: expense.note,
+
+          date: expense.expense_date
+            ? new Date(expense.expense_date).toLocaleDateString(
+                "en-IN",
+                {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                }
+              )
+            : expense.created_at
+            ? new Date(expense.created_at).toLocaleDateString(
+                "en-IN",
+                {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                }
+              )
+            : "N/A",
+
+          expense_date: expense.expense_date,
+          created_at: expense.created_at,
+        })
+      );
+
+      setExpenses(formattedExpenses);
+
+    } catch (err) {
+      console.error("Error loading expenses:", err);
+
+      setError(
+        "Unable to load expenses. Please make sure the backend is running."
+      );
+
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadExpenses();
+}, [router]);
 
   /* =========================================================
      CALCULATIONS
@@ -185,18 +211,26 @@ export default function ExpensesPage() {
     }
 
     try {
+      const token = getToken();
+
+      if (!token) {
+        alert("Please login before adding an expense.");
+        window.location.href = "/login";
+        return;
+      }
+
       const response = await fetch(
-        "http://127.0.0.1:8000/api/expenses",
+        `${API_URL}/api/expenses`,
         {
           method: "POST",
 
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
 
           body: JSON.stringify({
-            user_id: userId,
             title: title.trim(),
             category,
             amount: Number(amount),
@@ -204,6 +238,15 @@ export default function ExpensesPage() {
           }),
         }
       );
+
+      if (response.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+
+        window.location.href = "/login";
+
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -273,24 +316,43 @@ export default function ExpensesPage() {
     }
   }
 
-  /* =========================================================
-     DELETE EXPENSE
+ /* =========================================================
+   DELETE EXPENSE
 
-     For now this removes it from the UI.
-     We will connect DELETE to PostgreSQL in the next step.
-     ========================================================= */
+   Deletes the expense from PostgreSQL through
+   the authenticated user's JWT.
+   ========================================================= */
 
   async function deleteExpense(id: number) {
     try {
+        const token = getToken();
+
+        if (!token) {
+          alert("Please login first.");
+          window.location.href = "/login";
+          return;
+        }
+
         const response = await fetch(
-            `http://127.0.0.1:8000/api/expenses/${id}`,
-            {
-                method: "DELETE",
-                headers: {
-                    Accept: "application/json",
-                },
-            }
+          `${API_URL}/api/expenses/${id}`,
+          {
+            method: "DELETE",
+
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
+
+        if (response.status === 401) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+
+          window.location.href = "/login";
+
+          return;
+        }
 
         if (!response.ok) {
             throw new Error(

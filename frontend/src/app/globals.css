@@ -1449,6 +1449,11 @@ input {
     transform: translateY(0);
 }
 
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 /* =========================================================
    DIVIDER
    ========================================================= */

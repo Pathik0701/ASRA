@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.database.connection import get_db
-from app.models import Expense
+from app.models import Expense, User
+from app.dependencies import get_current_user
 
 
 router = APIRouter(
@@ -17,8 +19,6 @@ router = APIRouter(
 # =========================================================
 
 class ExpenseCreate(BaseModel):
-
-    user_id: int
 
     title: str = Field(
         min_length=1,
@@ -62,11 +62,12 @@ def expense_to_dict(expense: Expense):
 @router.post("")
 def create_expense(
     expense_data: ExpenseCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     expense = Expense(
-        user_id=expense_data.user_id,
+        user_id=current_user.id,
         title=expense_data.title,
         category=expense_data.category,
         amount=expense_data.amount,
@@ -92,13 +93,13 @@ def create_expense(
 
 @router.get("")
 def get_expenses(
-    user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     expenses = (
         db.query(Expense)
-        .filter(Expense.user_id == user_id)
+        .filter(Expense.user_id == current_user.id)
         .order_by(Expense.created_at.desc())
         .all()
     )
@@ -114,18 +115,55 @@ def get_expenses(
 
 
 # =========================================================
+# EXPENSE SUMMARY
+# =========================================================
+
+@router.get("/summary")
+def get_expense_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    total = (
+        db.query(func.coalesce(func.sum(Expense.amount), 0))
+        .filter(
+            Expense.user_id == current_user.id
+        )
+        .scalar()
+    )
+
+    count = (
+        db.query(Expense)
+        .filter(
+            Expense.user_id == current_user.id
+        )
+        .count()
+    )
+
+    return {
+        "success": True,
+        "total_expenses": float(total),
+        "expense_count": count
+    }
+
+
+# =========================================================
 # GET ONE EXPENSE
 # =========================================================
 
 @router.get("/{expense_id}")
 def get_expense(
     expense_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     expense = (
         db.query(Expense)
-        .filter(Expense.id == expense_id)
+        .filter(
+            Expense.id == expense_id,
+            Expense.user_id == current_user.id
+        )
         .first()
     )
 
@@ -149,12 +187,16 @@ def get_expense(
 @router.delete("/{expense_id}")
 def delete_expense(
     expense_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     expense = (
         db.query(Expense)
-        .filter(Expense.id == expense_id)
+        .filter(
+            Expense.id == expense_id,
+            Expense.user_id == current_user.id
+        )
         .first()
     )
 

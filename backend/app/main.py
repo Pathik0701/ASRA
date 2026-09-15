@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+
+from app.dependencies import get_current_user
+from app.models import User
 
 from app.routes.assistant import router as assistant_router
 from app.routes.expenses import router as expenses_router
@@ -94,3 +97,21 @@ def database_test():
             "database": "connection failed",
             "error": str(error)
         }
+
+
+@app.get("/api/auth/me")
+def get_me(
+    current_user: User = Depends(get_current_user)
+):
+
+    return {
+        "success": True,
+        "user": {
+            "id": current_user.id,
+            "name": current_user.name,
+            "email": current_user.email,
+            "phone": current_user.phone,
+            "preferred_language": current_user.preferred_language
+        }
+    }
+    
